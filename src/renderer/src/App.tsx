@@ -1,6 +1,10 @@
+import IRIS from './UI/IRIS'
+
 const App = () => {
   return (
-    <div>App</div>
+    <div>
+      <IRIS />
+    </div>
   )
 }
 
