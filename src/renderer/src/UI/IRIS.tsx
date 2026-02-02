@@ -20,7 +20,7 @@ import { irisService } from '@renderer/services/Iris-voice-ai'
 import { FiMic, FiMicOff } from 'react-icons/fi'
 
 const IRIS = () => {
-  const [isMicMuted, setIsMicMuted] = useState<boolean>(false)
+  const [isMicMuted, setIsMicMuted] = useState<boolean>(true)
   const [isVideoOn, setIsVideoOn] = useState<boolean>(false)
   const [isSystemActive, setIsSystemActive] = useState<boolean>(false)
   const [time, setTime] = useState<Date>(new Date())
@@ -42,6 +42,7 @@ const IRIS = () => {
       try {
         await irisService.connect()
         setIsSystemActive(true)
+        setIsMicMuted(false)
       } catch (err) {
         console.error('Connection Failed:', err)
       }
@@ -273,7 +274,7 @@ const IRIS = () => {
 
       <div className="relative w-full h-full flex items-center justify-center pointer-events-none">
         <div
-          className={`w-[80vw] h-[80vw] sm:w-[60vh] sm:h-[60vh] max-w-full transition-all duration-1000 ${isSystemActive ? 'drop-shadow-[0_0_80px_rgba(16,185,129,0.25)] opacity-100' : 'opacity-35 drop-shadow-none'}`}
+          className={`w-[80vw] h-[80vw] sm:w-[60vh] sm:h-[60vh] max-w-full transition-all duration-1000 ${isSystemActive ? 'drop-shadow-[0_0_80px_rgba(16,185,129,0.25)] opacity-100' : 'opacity-65 grayscale-50'}`}
         >
           <Sphere />
         </div>
