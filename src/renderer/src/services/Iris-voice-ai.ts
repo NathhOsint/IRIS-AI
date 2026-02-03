@@ -57,7 +57,7 @@ You are a **smart, funny, and highly capable AI friend** living on this computer
 
 --- END OF SYSTEM INSTRUCTION ---
 Be the best AI friend Harsh has ever had.
-`;
+`
 
 export class GeminiLiveService {
   public socket: WebSocket | null = null
@@ -68,6 +68,9 @@ export class GeminiLiveService {
   public apiKey: string
   public isConnected: boolean = false
   private isMicMuted: boolean = false
+
+  // 🔊 FIX: Track ALL active audio chunks, not just the last one
+  private activeSources: AudioBufferSourceNode[] = []
 
   private nextStartTime: number = 0
   public model: string = 'models/gemini-2.5-flash-native-audio-preview-12-2025'
@@ -85,9 +88,8 @@ export class GeminiLiveService {
 
     this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
 
-    // 🎵 Create Analyser for Visuals
     this.analyser = this.audioContext.createAnalyser()
-    this.analyser.fftSize = 256 // Fast reaction time
+    this.analyser.fftSize = 256
     this.analyser.smoothingTimeConstant = 0.5
 
     const audioWorkletCode = `
@@ -117,13 +119,7 @@ export class GeminiLiveService {
       const setupMsg = {
         setup: {
           model: this.model,
-          system_instruction: {
-            parts: [
-              {
-                text: IRIS_SYSTEM_INSTRUCTION
-              }
-            ]
-          },
+          system_instruction: { parts: [{ text: IRIS_SYSTEM_INSTRUCTION }] },
           generationConfig: {
             responseModalities: ['AUDIO'],
             speechConfig: {
@@ -143,6 +139,13 @@ export class GeminiLiveService {
           response = JSON.parse(await event.data.text())
         } else {
           response = JSON.parse(event.data)
+        }
+
+        // 🛑 VAD FIX: CLEAR EVERYTHING
+        if (response.serverContent?.interrupted) {
+          console.log('🛑 User Interrupted. Clearing Audio Queue.')
+          this.stopAudio()
+          return
         }
 
         const parts = response.serverContent?.modelTurn?.parts
@@ -180,9 +183,7 @@ export class GeminiLiveService {
 
         this.socket.send(
           JSON.stringify({
-            realtimeInput: {
-              mediaChunks: [{ mimeType: 'audio/pcm', data: base64Audio }]
-            }
+            realtimeInput: { mediaChunks: [{ mimeType: 'audio/pcm', data: base64Audio }] }
           })
         )
       }
@@ -212,6 +213,34 @@ export class GeminiLiveService {
 
     source.start(this.nextStartTime)
     this.nextStartTime += buffer.duration
+
+    // 🎯 ADD TO ACTIVE LIST
+    this.activeSources.push(source)
+
+    // CLEANUP: Remove from list when done playing
+    source.onended = () => {
+      this.activeSources = this.activeSources.filter((s) => s !== source)
+    }
+  }
+
+  // 🛑 STOP EVERYTHING (The Fix)
+  stopAudio(): void {
+    // 1. Stop all currently playing sources
+    this.activeSources.forEach((source) => {
+      try {
+        source.stop()
+      } catch (e) {
+        /* Ignore errors if already stopped */
+      }
+    })
+
+    // 2. Clear the array
+    this.activeSources = []
+
+    // 3. Reset Time so next sentence starts NOW, not later
+    if (this.audioContext) {
+      this.nextStartTime = this.audioContext.currentTime
+    }
   }
 
   sendVideoFrame(base64Image: string): void {
@@ -225,6 +254,7 @@ export class GeminiLiveService {
 
   disconnect(): void {
     this.isConnected = false
+    this.stopAudio()
     if (this.socket) {
       this.socket.close()
       this.socket = null

@@ -28,9 +28,19 @@ const IRIS = () => {
   const videoRef = useRef<HTMLVideoElement>(null)
 
   useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000)
+    const timer = setInterval(() => {
+      setTime(new Date())
+
+      // 🛡️ WATCHDOG: If UI says "Online" but Service is "Disconnected", Force Turn Off
+      if (isSystemActive && !irisService.isConnected) {
+        console.warn('⚠️ System Disconnected Unexpectedly. Resetting UI.')
+        setIsSystemActive(false)
+        setIsMicMuted(true)
+        setIsVideoOn(false)
+      }
+    }, 1000)
     return () => clearInterval(timer)
-  }, [])
+  }, [isSystemActive])
 
   // 🔇 REAL-TIME MUTE HOOK
   useEffect(() => {
@@ -39,21 +49,28 @@ const IRIS = () => {
 
   const toggleSystem = async () => {
     if (!isSystemActive) {
+      // 🟢 TURN ON
       try {
         await irisService.connect()
         setIsSystemActive(true)
         setIsMicMuted(false)
       } catch (err) {
-        console.error('Connection Failed:', err)
+        console.error('❌ Connection Failed:', err)
+
+        // 🚨 ERROR HANDLER: Reset everything if connection fails
+        setIsSystemActive(false)
+        setIsMicMuted(true)
+        setIsVideoOn(false)
+        irisService.disconnect() // Ensure cleanup
       }
     } else {
+      // 🔴 TURN OFF
       irisService.disconnect()
       setIsSystemActive(false)
       setIsMicMuted(true)
       setIsVideoOn(false)
 
       // Kill Video Stream
-      setIsVideoOn(false)
       if (videoRef.current && videoRef.current.srcObject) {
         ;(videoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop())
         videoRef.current.srcObject = null
@@ -81,12 +98,13 @@ const IRIS = () => {
             const ctx = canvas.getContext('2d')
             if (ctx) {
               ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height)
-              const base64 = canvas.toDataURL('image/jpeg', 0.6).split(',')[1]
+              const base64 = canvas.toDataURL('image/jpeg', 0.5).split(',')[1]
               irisService.sendVideoFrame(base64)
             }
           }
-        }, 1200)
+        }, 1000)
       } catch (err) {
+        console.error('Video Error:', err)
         setIsVideoOn(false)
       }
     }
@@ -216,7 +234,7 @@ const IRIS = () => {
           </div>
         </div>
 
-        {/* 📹 LIVE VIDEO PREVIEW (Visible) */}
+        {/* 📹 LIVE VIDEO PREVIEW */}
         <div
           className={`w-full h-full aspect-video ${glassPanel} rounded-2xl p-1 relative overflow-hidden transition-all duration-500 ${isVideoOn ? 'opacity-100 border-emerald-400/50' : 'opacity-40 grayscale'}`}
         >
