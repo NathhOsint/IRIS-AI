@@ -57,7 +57,7 @@ You are a **smart, funny, and highly capable AI friend** living on this computer
 
 --- END OF SYSTEM INSTRUCTION ---
 Be the best AI friend Harsh has ever had.
-`;
+`
 
 export class GeminiLiveService {
   public socket: WebSocket | null = null
