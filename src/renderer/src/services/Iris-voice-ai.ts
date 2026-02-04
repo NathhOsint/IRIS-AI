@@ -1,4 +1,5 @@
 import { floatTo16BitPCM, base64ToFloat32, downsampleTo16000 } from '../utils/audioUtils'
+import { getHistory, saveMessage } from './iris-ai-brain'
 
 const IRIS_SYSTEM_INSTRUCTION = `
 # 👁️ IRIS — YOUR INTELLIGENT COMPANION
@@ -72,6 +73,9 @@ export class GeminiLiveService {
   private nextStartTime: number = 0
   public model: string = 'models/gemini-2.5-flash-native-audio-preview-12-2025'
 
+  private aiResponseBuffer: string = ''
+  private userInputBuffer: string = ''
+
   constructor() {
     this.apiKey = import.meta.env.VITE_IRIS_AI_API_KEY || ''
   }
@@ -84,9 +88,8 @@ export class GeminiLiveService {
     if (!this.apiKey) return console.error('❌ No API Key')
 
     this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-
     this.analyser = this.audioContext.createAnalyser()
-    this.analyser.fftSize = 256 // Fast reaction time
+    this.analyser.fftSize = 256
     this.analyser.smoothingTimeConstant = 0.5
 
     const audioWorkletCode = `
@@ -105,22 +108,26 @@ export class GeminiLiveService {
     const workletUrl = URL.createObjectURL(blob)
     await this.audioContext.audioWorklet.addModule(workletUrl)
 
-    const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${this.apiKey}`
+    const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${this.apiKey}`
     this.socket = new WebSocket(url)
 
-    this.socket.onopen = () => {
+    this.socket.onopen = async () => {
       console.log('🟢 IRIS Connected')
       this.isConnected = true
       this.nextStartTime = 0
+
+      this.aiResponseBuffer = ''
+      this.userInputBuffer = ''
+
+      const history = await getHistory()
 
       const setupMsg = {
         setup: {
           model: this.model,
           system_instruction: {
             parts: [
-              {
-                text: IRIS_SYSTEM_INSTRUCTION
-              }
+              { text: IRIS_SYSTEM_INSTRUCTION },
+              { text: `\n\n[Memory]: ${JSON.stringify(history)}` }
             ]
           },
           generationConfig: {
@@ -128,7 +135,9 @@ export class GeminiLiveService {
             speechConfig: {
               voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Puck' } }
             }
-          }
+          },
+          inputAudioTranscription: {},
+          outputAudioTranscription: {}
         }
       }
       this.socket?.send(JSON.stringify(setupMsg))
@@ -137,16 +146,45 @@ export class GeminiLiveService {
 
     this.socket.onmessage = async (event) => {
       try {
-        let response: any
-        if (event.data instanceof Blob) {
-          response = JSON.parse(await event.data.text())
-        } else {
-          response = JSON.parse(event.data)
-        }
+        const data = JSON.parse(event.data instanceof Blob ? await event.data.text() : event.data)
+        const serverContent = data.serverContent
 
-        const parts = response.serverContent?.modelTurn?.parts
-        if (parts && parts[0]?.inlineData) {
-          this.scheduleAudioChunk(parts[0].inlineData.data)
+        if (serverContent) {
+          // A. HANDLE AUDIO (Play immediately)
+          if (serverContent.modelTurn?.parts) {
+            serverContent.modelTurn.parts.forEach((part: any) => {
+              if (part.inlineData) {
+                this.scheduleAudioChunk(part.inlineData.data)
+              }
+            })
+          }
+
+          // B. HANDLE IRIS TEXT (ACCUMULATE, DON'T SAVE YET)
+          if (serverContent.outputTranscription?.text) {
+            // Append the new word to our buffer
+            this.aiResponseBuffer += serverContent.outputTranscription.text
+          }
+
+          // C. HANDLE USER TEXT (ACCUMULATE)
+          if (serverContent.inputTranscription?.text) {
+            this.userInputBuffer += serverContent.inputTranscription.text
+          }
+
+          if (serverContent.turnComplete || serverContent.interrupted) {
+            // 1. Save User's accumulated speech (if any)
+            if (this.userInputBuffer.trim()) {
+              await saveMessage('user', this.userInputBuffer.trim())
+              console.log('📝 Saved User:', this.userInputBuffer)
+              this.userInputBuffer = ''
+            }
+
+            // 2. Save IRIS's accumulated speech (if any)
+            if (this.aiResponseBuffer.trim()) {
+              await saveMessage('iris', this.aiResponseBuffer.trim())
+              console.log('📝 Saved IRIS:', this.aiResponseBuffer)
+              this.aiResponseBuffer = ''
+            }
+          }
         }
       } catch (err) {}
     }
