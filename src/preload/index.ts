@@ -8,7 +8,6 @@ if (process.contextIsolated) {
   try {
     contextBridge.exposeInMainWorld('electron', {
       ...electronAPI,
-      // We manually override ipcRenderer to ensure 'invoke' works
       ipcRenderer: {
         ...electronAPI.ipcRenderer,
         invoke: (channel: string, ...args: any[]) => ipcRenderer.invoke(channel, ...args)
