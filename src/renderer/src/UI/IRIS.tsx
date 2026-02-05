@@ -18,11 +18,15 @@ import {
 import { GiPowerButton, GiTinker } from 'react-icons/gi'
 import { irisService } from '@renderer/services/Iris-voice-ai'
 import { FiMic, FiMicOff } from 'react-icons/fi'
+import { FaMemory } from 'react-icons/fa6'
+import { getSystemStatus } from '@renderer/services/system-info'
+import { HiComputerDesktop } from 'react-icons/hi2'
 
 const IRIS = () => {
   const [isMicMuted, setIsMicMuted] = useState<boolean>(true)
   const [isVideoOn, setIsVideoOn] = useState<boolean>(false)
   const [isSystemActive, setIsSystemActive] = useState<boolean>(false)
+  const [stats, setStats] = useState<any>(null)
   const [time, setTime] = useState<Date>(new Date())
 
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -116,6 +120,42 @@ const IRIS = () => {
     }
     return () => clearInterval(intervalId)
   }, [isVideoOn, isSystemActive])
+
+  useEffect(() => {
+    getSystemStatus().then(setStats)
+    const interval = setInterval(() => {
+      getSystemStatus().then(setStats)
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  const systemMetrics = [
+    {
+      icon: <RiCpuLine />,
+      label: 'CPU',
+      // Backend sends "12.5", we add "%"
+      val: isSystemActive && stats ? `${stats.cpu}%` : '--'
+    },
+    {
+      icon: <FaMemory />,
+      label: 'RAM',
+      // Backend sends "45.2", we add "%"
+      val: isSystemActive && stats ? `${stats.memory.usedPercentage}%` : '--'
+    },
+    {
+      icon: <GiTinker />,
+      label: 'TEMP',
+      // Backend now sends a number (e.g. 52)
+      val: isSystemActive && stats ? `${stats.temperature}°C` : '--'
+    },
+    {
+      icon: <HiComputerDesktop />,
+      label: 'OS',
+      // Backend now sends a number (e.g. 52)
+      val: isSystemActive && stats ? `${stats.os.type}` : '--'
+    }
+  ]
 
   const neonText = 'text-emerald-400 drop-shadow-[0_0_12px_rgba(52,211,153,0.9)]'
   const glassPanel =
@@ -234,7 +274,6 @@ const IRIS = () => {
           </div>
         </div>
 
-        {/* 📹 LIVE VIDEO PREVIEW */}
         <div
           className={`w-full h-full aspect-video ${glassPanel} rounded-2xl p-1 relative overflow-hidden transition-all duration-500 ${isVideoOn ? 'opacity-100 border-emerald-400/50' : 'opacity-40 grayscale'}`}
         >
@@ -276,17 +315,14 @@ const IRIS = () => {
         </div>
 
         <div className="grid grid-cols-2 gap-3 w-full">
-          {[
-            { icon: <RiCpuLine />, label: 'CPU', val: isSystemActive ? '12%' : '--' },
-            { icon: <GiTinker />, label: 'TEMP', val: isSystemActive ? '41°C' : '--' }
-          ].map((m, i) => (
+          {systemMetrics.map((m, i) => (
             <div
               key={i}
               className={`${glassPanel} p-3 flex flex-col items-center justify-center rounded-2xl`}
             >
               <span className="text-xl mb-1">{m.icon}</span>
-              <span className="text-[8px] opacity-40 uppercase tracking-tighter">{m.label}</span>
-              <span className="text-xs font-bold mt-1 tracking-widest">{m.val}</span>
+              <span className="text-[12px] opacity-80 uppercase tracking-tighter font-bold">{m.label}</span>
+              <span className="text-xs font-semibold mt-1 tracking-widest">{m.val}</span>
             </div>
           ))}
         </div>
