@@ -1,13 +1,7 @@
 import { floatTo16BitPCM, base64ToFloat32, downsampleTo16000 } from '../utils/audioUtils'
+import { getRunningApps } from './get-apps'
 import { getHistory, saveMessage } from './iris-ai-brain'
 import { getSystemStatus } from './system-info'
-
-let os: any | null = ''
-const systemInfo = getSystemStatus().then((info) => {
-  os = info?.os.type || 'Unknown OS'
-  return info
-})
-const history = await getHistory()
 
 const IRIS_SYSTEM_INSTRUCTION = `
 # 👁️ IRIS — YOUR INTELLIGENT COMPANION
@@ -61,11 +55,6 @@ You are a **smart, funny, and highly capable AI friend** living on this computer
 
 ---
 
-# About User 👤
- - user's Name : Harsh Pandey
- - user's OS : ${os || 'Loading...'}
- - user's System Info : ${JSON.stringify((await systemInfo) || {}, null, 2)}
-
 ## 🔄 CURRENT STATUS
 - **Mood:** Happy & Ready
 - **Vision:** Looking... 👀
@@ -98,6 +87,9 @@ export class GeminiLiveService {
   private aiResponseBuffer: string = ''
   private userInputBuffer: string = ''
 
+  private appWatcherInterval: NodeJS.Timeout | null = null
+  private lastAppList: string[] = []
+
   constructor() {
     this.apiKey = import.meta.env.VITE_IRIS_AI_API_KEY || ''
   }
@@ -108,6 +100,30 @@ export class GeminiLiveService {
 
   async connect(): Promise<void> {
     if (!this.apiKey) return console.error('❌ No API Key')
+
+    const history = await getHistory()
+    const sysStats = await getSystemStatus()
+    this.lastAppList = await getRunningApps()
+
+    const contextPrompt = `
+    ---
+    # 🌍 REAL-TIME CONTEXT
+    - **User:** Harsh Pandey
+    - **OS:** ${sysStats?.os.type || 'Unknown'}
+    - **System Health:** CPU ${sysStats?.cpu || '0'}% | RAM ${sysStats?.memory.usedPercentage || '0'}%
+    - **Uptime:** ${sysStats?.os.uptime || 'Unknown'}
+    - **Temperature:** ${sysStats?.temperature || 'Unknown'}°C
+    - **Open Apps:** ${this.lastAppList.join(', ')}
+    - **Current Time:** ${new Date().toLocaleString()}
+
+    ---
+  
+    # 🧠 MEMORY (Last Context)
+    ${JSON.stringify(history)}
+    ---
+    `
+
+    const finalSystemInstruction = IRIS_SYSTEM_INSTRUCTION + contextPrompt
 
     this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
     this.analyser = this.audioContext.createAnalyser()
@@ -144,7 +160,7 @@ export class GeminiLiveService {
         setup: {
           model: this.model,
           system_instruction: {
-            parts: [{ text: IRIS_SYSTEM_INSTRUCTION }]
+            parts: [{ text: finalSystemInstruction }]
           },
           generationConfig: {
             responseModalities: ['AUDIO'],
@@ -158,6 +174,7 @@ export class GeminiLiveService {
       }
       this.socket?.send(JSON.stringify(setupMsg))
       this.startMicrophone()
+      this.startAppWatcher()
     }
 
     this.socket.onmessage = async (event) => {
@@ -205,6 +222,42 @@ export class GeminiLiveService {
       console.log(`🔴 IRIS Disconnected. Code: ${event.code}`)
       this.disconnect()
     }
+  }
+
+  startAppWatcher() {
+    console.log('👁️ Silent Watcher Started')
+    this.appWatcherInterval = setInterval(async () => {
+      if (!this.isConnected || !this.socket) return
+
+      // Get fresh list
+      const currentApps = await getRunningApps()
+
+      // Diff
+      const newOpened = currentApps.filter((app) => !this.lastAppList.includes(app))
+      const newClosed = this.lastAppList.filter((app) => !currentApps.includes(app))
+
+      if (newOpened.length > 0 || newClosed.length > 0) {
+        this.lastAppList = currentApps // Update cache
+
+        let msg = ''
+        if (newOpened.length > 0) msg += `[System Notice]: User OPENED ${newOpened.join(', ')}. `
+        if (newClosed.length > 0) msg += `[System Notice]: User CLOSED ${newClosed.join(', ')}. `
+
+        console.log(`🚀 Sending Context Update: ${msg}`)
+
+        // Send to Gemini as a hidden user message
+        const updateFrame = {
+          clientContent: {
+            turns: [{ role: 'user', parts: [{ text: msg }] }],
+            turnComplete: true
+          }
+        }
+
+        if (this.socket.readyState === WebSocket.OPEN) {
+          this.socket.send(JSON.stringify(updateFrame))
+        }
+      }
+    }, 5000)
   }
 
   async startMicrophone(): Promise<void> {
@@ -273,6 +326,11 @@ export class GeminiLiveService {
   }
 
   disconnect(): void {
+    if (this.appWatcherInterval) {
+      clearInterval(this.appWatcherInterval)
+      this.appWatcherInterval = null
+    }
+
     this.isConnected = false
     if (this.socket) {
       this.socket.close()
