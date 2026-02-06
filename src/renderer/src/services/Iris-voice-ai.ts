@@ -253,7 +253,7 @@ export class GeminiLiveService {
         const updateFrame = {
           clientContent: {
             turns: [{ role: 'user', parts: [{ text: msg }] }],
-            turnComplete: false
+            turnComplete: true
           }
         }
 
