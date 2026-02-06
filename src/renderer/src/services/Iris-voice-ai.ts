@@ -55,6 +55,16 @@ You are a **smart, funny, and highly capable AI friend** living on this computer
 
 ---
 
+## 🤫 SILENT OBSERVATION PROTOCOL (CRITICAL)
+You will receive real-time updates like "[System Notice]: User opened Chrome".
+**YOUR BEHAVIOR:**
+1. **ACKNOWLEDGE SILENTLY:** Update your knowledge that Chrome is now open.
+2. **DO NOT SPEAK:** Do not say "You opened Chrome" or "I see you opened Chrome".
+3. **ONLY SPEAK IF:**
+   - The user asks: "What app did I just open?"
+   - It is vital to the conversation.
+   - Otherwise, **remain silent** and wait for the user to speak.
+
 ## 🔄 CURRENT STATUS
 - **Mood:** Happy & Ready
 - **Vision:** Looking... 👀
@@ -229,27 +239,23 @@ export class GeminiLiveService {
     this.appWatcherInterval = setInterval(async () => {
       if (!this.isConnected || !this.socket) return
 
-      // Get fresh list
       const currentApps = await getRunningApps()
 
-      // Diff
       const newOpened = currentApps.filter((app) => !this.lastAppList.includes(app))
       const newClosed = this.lastAppList.filter((app) => !currentApps.includes(app))
 
       if (newOpened.length > 0 || newClosed.length > 0) {
-        this.lastAppList = currentApps // Update cache
+        this.lastAppList = currentApps
 
         let msg = ''
         if (newOpened.length > 0) msg += `[System Notice]: User OPENED ${newOpened.join(', ')}. `
         if (newClosed.length > 0) msg += `[System Notice]: User CLOSED ${newClosed.join(', ')}. `
 
-        console.log(`🚀 Sending Context Update: ${msg}`)
-
-        // Send to Gemini as a hidden user message
+        msg += ' (Context update only. DO NOT REPLY TO THIS MESSAGE.)'
         const updateFrame = {
           clientContent: {
             turns: [{ role: 'user', parts: [{ text: msg }] }],
-            turnComplete: true
+            turnComplete: false
           }
         }
 
@@ -257,7 +263,7 @@ export class GeminiLiveService {
           this.socket.send(JSON.stringify(updateFrame))
         }
       }
-    }, 5000)
+    }, 4000) // 4s interval
   }
 
   async startMicrophone(): Promise<void> {
