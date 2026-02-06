@@ -4,6 +4,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import registerIpcHandlers from './logic/iris-memory-save'
 import registerSystemHandlers from './logic/get-system-info'
+import registerAppLauncher from './logic/app-launcher'
 
 function createWindow(): void {
   // Create the browser window.
@@ -51,6 +52,7 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
+  registerAppLauncher(ipcMain)
   registerSystemHandlers(ipcMain)
   registerIpcHandlers({ ipcMain, app })
   createWindow()
