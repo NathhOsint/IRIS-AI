@@ -35,7 +35,6 @@ const IRIS = () => {
     const timer = setInterval(() => {
       setTime(new Date())
 
-      // 🛡️ WATCHDOG: If UI says "Online" but Service is "Disconnected", Force Turn Off
       if (isSystemActive && !irisService.isConnected) {
         console.warn('⚠️ System Disconnected Unexpectedly. Resetting UI.')
         setIsSystemActive(false)
@@ -46,7 +45,6 @@ const IRIS = () => {
     return () => clearInterval(timer)
   }, [isSystemActive])
 
-  // 🔇 REAL-TIME MUTE HOOK
   useEffect(() => {
     irisService.setMute(isMicMuted)
   }, [isMicMuted])
@@ -134,25 +132,21 @@ const IRIS = () => {
     {
       icon: <RiCpuLine />,
       label: 'CPU',
-      // Backend sends "12.5", we add "%"
       val: isSystemActive && stats ? `${stats.cpu}%` : '--'
     },
     {
       icon: <FaMemory />,
       label: 'RAM',
-      // Backend sends "45.2", we add "%"
       val: isSystemActive && stats ? `${stats.memory.usedPercentage}%` : '--'
     },
     {
       icon: <GiTinker />,
       label: 'TEMP',
-      // Backend now sends a number (e.g. 52)
       val: isSystemActive && stats ? `${stats.temperature}°C` : '--'
     },
     {
       icon: <HiComputerDesktop />,
       label: 'OS',
-      // Backend now sends a number (e.g. 52)
       val: isSystemActive && stats ? `${stats.os.type}` : '--'
     }
   ]
