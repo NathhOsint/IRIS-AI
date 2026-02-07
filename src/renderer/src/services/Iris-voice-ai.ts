@@ -261,7 +261,7 @@ export class GeminiLiveService {
           this.socket.send(JSON.stringify(updateFrame))
         }
       }
-    }, 4000) // 4s interval
+    }, 3000)
   }
 
   async startMicrophone(): Promise<void> {
