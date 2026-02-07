@@ -1,8 +1,8 @@
-import { IpcMain } from 'electron' // Type only
+import { IpcMain } from 'electron'
 import os from 'os'
 
-// 1. Helper Helpers (Keep these)
 let cpuLastSnapshot = os.cpus()
+
 function getSystemCpuUsage() {
   const cpus = os.cpus()
   let idle = 0; let total = 0
@@ -23,11 +23,9 @@ function getOSFriendlyName() {
   return 'Linux'
 }
 
-// 2. THE FIX: Accept ipcMain as an argument
 export default function registerSystemHandlers(ipcMain: IpcMain) {
   console.log('🔵 [Main] Registering System Stats...') 
 
-  // Remove old handlers to prevent hot-reload duplicates
   ipcMain.removeHandler('get-system-stats')
 
   ipcMain.handle('get-system-stats', async () => {
