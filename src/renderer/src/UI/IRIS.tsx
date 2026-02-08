@@ -40,7 +40,6 @@ const IRIS = () => {
   const activeStreamRef = useRef<MediaStream | null>(null)
   const aiIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  // ... (Keep Clock, Mic Sync, ToggleSystem, TurnOffVision EXACTLY AS BEFORE) ...
   useEffect(() => {
     const timer = setInterval(() => {
       setTime(new Date())
@@ -89,11 +88,7 @@ const IRIS = () => {
     }
   }
 
-  // ----------------------------------------------------------------
-  // 🛠️ THE FIX: ROBUST STREAM GETTER
-  // ----------------------------------------------------------------
   const getStream = async (mode: 'camera' | 'screen') => {
-    // Stop existing
     if (activeStreamRef.current) {
       activeStreamRef.current.getTracks().forEach((t) => t.stop())
     }
@@ -102,13 +97,10 @@ const IRIS = () => {
       let stream: MediaStream
 
       if (mode === 'camera') {
-        // Standard Webcam
         stream = await navigator.mediaDevices.getUserMedia({
           video: { width: 640, height: 480 }
         })
       } else {
-        // 🚀 ELECTRON SCREEN SHARE FIX
-        // 1. Get the Source ID from Main Process
         const sourceId = await getScreenSourceId()
 
         if (!sourceId) {
@@ -116,7 +108,6 @@ const IRIS = () => {
           return null
         }
 
-        // 2. Use getUserMedia with Electron-specific constraints
         stream = await navigator.mediaDevices.getUserMedia({
           audio: false,
           video: {
@@ -138,9 +129,6 @@ const IRIS = () => {
       return null
     }
   }
-  // ----------------------------------------------------------------
-
-  // ... (Keep Button Handler, useEffect for Modal, confirmSource, startAIProcessing) ...
   const handleVisionBtnClick = () => {
     if (isVideoOn) {
       turnOffVision()
@@ -201,13 +189,12 @@ const IRIS = () => {
           irisService.sendVideoFrame(base64)
         }
       }
-    }, 1000)
+    }, 2000)
   }
 
-  // ... (Keep Stats & UI) ...
   useEffect(() => {
     getSystemStatus().then(setStats)
-    const interval = setInterval(() => getSystemStatus().then(setStats), 5000)
+    const interval = setInterval(() => getSystemStatus().then(setStats), 7000)
     return () => clearInterval(interval)
   }, [])
 
@@ -236,11 +223,10 @@ const IRIS = () => {
 
   return (
     <div className="h-screen w-full bg-black flex items-center justify-center overflow-hidden font-mono text-emerald-500 selection:bg-emerald-500/30 select-none relative">
-      {/* MODAL */}
       {showSourceModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
           <div
-            className={`${glassPanel} w-[600px] p-6 rounded-3xl border border-emerald-500/40 flex flex-col gap-6 shadow-[0_0_100px_rgba(16,185,129,0.2)]`}
+            className={`${glassPanel} w-150 p-6 rounded-3xl border border-emerald-500/40 flex flex-col gap-6 shadow-[0_0_100px_rgba(16,185,129,0.2)]`}
           >
             <h2 className={`text-3xl font-black italic tracking-tighter text-center ${neonText}`}>
               VISION LINK
@@ -280,7 +266,7 @@ const IRIS = () => {
               </button>
               <button
                 onClick={confirmSource}
-                className="flex-[2] py-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black tracking-widest text-sm shadow-[0_0_30px_rgba(16,185,129,0.3)]"
+                className="flex-2 py-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black tracking-widest text-sm shadow-[0_0_30px_rgba(16,185,129,0.3)]"
               >
                 ESTABLISH UPLINK
               </button>
@@ -289,14 +275,12 @@ const IRIS = () => {
         </div>
       )}
 
-      {/* --- BACKGROUND --- */}
       <div className="absolute inset-0 border-2 border-emerald-500/5 pointer-events-none" />
       <div className="absolute top-0 left-0 w-[15vw] h-[15vw] max-w-48 max-h-48 border-t-2 border-l-2 border-emerald-500/40 rounded-tl-4xl md:rounded-tl-[4rem] m-4 md:m-6" />
       <div className="absolute bottom-0 right-0 w-[15vw] h-[15vw] max-w-48 max-h-48 border-b-2 border-r-2 border-emerald-500/40 rounded-br-4xl md:rounded-br-[4rem] m-4 md:m-6" />
       <div className="absolute top-0 right-0 w-[8vw] h-[8vw] max-w-24 max-h-24 border-t-2 border-r-2 border-emerald-500/20 rounded-tr-3xl m-4 md:m-6 opacity-50" />
       <div className="absolute bottom-0 left-0 w-[8vw] h-[8vw] max-w-24 max-h-24 border-b-2 border-l-2 border-emerald-500/20 rounded-bl-3xl m-4 md:m-6 opacity-50" />
 
-      {/* --- HEADER --- */}
       <div className="absolute top-[5vh] flex flex-col items-center z-50 pointer-events-none w-full">
         <div className="flex items-center gap-4 mb-2">
           <div className="hidden sm:block w-16 h-px bg-linear-to-r from-transparent via-emerald-500 to-emerald-500" />
@@ -318,7 +302,6 @@ const IRIS = () => {
         </div>
       </div>
 
-      {/* --- LEFT PANEL --- */}
       <div className="absolute left-6 xl:left-12 flex-col gap-6 w-64 lg:w-80 h-[50%] justify-center hidden lg:flex">
         <div
           className={`p-5 ${glassPanel} rounded-br-[3rem] border-l-4 border-l-emerald-500 relative`}
@@ -371,7 +354,6 @@ const IRIS = () => {
         </div>
       </div>
 
-      {/* --- RIGHT PANEL --- */}
       <div className="absolute right-6 xl:right-12 flex-col gap-6 w-64 lg:w-80 h-[60%] justify-center hidden lg:flex items-end z-50">
         <div
           className={`p-6 ${glassPanel} rounded-bl-[3rem] flex flex-col items-center w-full relative`}
@@ -400,7 +382,6 @@ const IRIS = () => {
           </div>
         </div>
 
-        {/* MAIN VIDEO */}
         <div
           className={`w-full h-full aspect-video ${glassPanel} rounded-2xl p-1 relative overflow-hidden transition-all duration-500 ${isVideoOn ? 'opacity-100 border-emerald-400/50' : 'opacity-40 grayscale'}`}
         >
@@ -443,7 +424,6 @@ const IRIS = () => {
         </div>
       </div>
 
-      {/* --- CENTER --- */}
       <div className="relative w-full h-full flex items-center justify-center pointer-events-none">
         <div
           className={`w-[80vw] h-[80vw] sm:w-[60vh] sm:h-[60vh] max-w-full transition-all duration-1000 ${isSystemActive ? 'drop-shadow-[0_0_80px_rgba(16,185,129,0.25)] opacity-100' : 'opacity-65 grayscale-50'}`}
@@ -452,7 +432,6 @@ const IRIS = () => {
         </div>
       </div>
 
-      {/* --- BOTTOM --- */}
       <div className="absolute bottom-[4vh] w-full flex flex-col items-center z-50 px-4 md:px-6">
         <div className="flex items-end gap-px md:gap-1 h-12 mb-6 opacity-30 px-10 max-w-4xl w-full overflow-hidden">
           {[...Array(60)].map((_, i) => (
