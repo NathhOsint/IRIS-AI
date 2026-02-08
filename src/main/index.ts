@@ -58,7 +58,6 @@ app.whenReady().then(() => {
 
   ipcMain.handle('get-screen-source', async () => {
     const sources = await desktopCapturer.getSources({ types: ['screen'] })
-    // Return the first screen (Primary Display)
     return sources[0]?.id
   })
 
