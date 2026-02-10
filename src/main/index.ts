@@ -18,7 +18,6 @@ import registerFileOps from './logic/file-ops'
 import registerFileWrite from './logic/file-write'
 import registerFileRead from './logic/file-read'
 
-// 1. GLOBAL VARIABLES
 let mainWindow: BrowserWindow | null = null
 let isOverlayMode = false
 
@@ -28,8 +27,8 @@ function createWindow(): void {
     height: 670,
     show: false,
     autoHideMenuBar: true,
-    frame: false, // ⚡ REQUIRED: No OS Title Bar (We build our own)
-    transparent: true, // ⚡ REQUIRED: For the Pill Shape
+    frame: false, 
+    transparent: true,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -42,7 +41,6 @@ function createWindow(): void {
     if (mainWindow) mainWindow.show()
   })
 
-  // --- WINDOW CONTROLS (Min/Close/Max) ---
   ipcMain.on('window-min', () => mainWindow?.minimize())
   ipcMain.on('window-close', () => mainWindow?.close())
   ipcMain.on('window-max', () => {
@@ -62,7 +60,6 @@ function createWindow(): void {
   }
 }
 
-// 2. TOGGLE LOGIC
 function toggleOverlayMode() {
   if (!mainWindow) return
 
@@ -70,21 +67,19 @@ function toggleOverlayMode() {
   const { width, height } = primaryDisplay.workAreaSize
 
   if (isOverlayMode) {
-    // 🖥️ DASHBOARD MODE
     mainWindow.setResizable(true)
     mainWindow.setAlwaysOnTop(false)
     mainWindow.setBounds({ width: 900, height: 670 })
     mainWindow.center()
     mainWindow.webContents.send('overlay-mode', false)
   } else {
-    // 💊 OVERLAY MODE (Small Pill)
-    const w = 280
+    const w = 290
     const h = 70
     mainWindow.setBounds({
       width: w,
       height: h,
       x: Math.floor(width / 2 - w / 2),
-      y: height - h - 50 // Bottom Center
+      y: height - h - 50 
     })
     mainWindow.setAlwaysOnTop(true, 'screen-saver')
     mainWindow.setResizable(false)
@@ -100,7 +95,6 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  // --- KEEPING YOUR LOGIC ---
   registerFileSearch(ipcMain)
   registerFileRead(ipcMain)
   registerFileWrite(ipcMain)
@@ -116,7 +110,6 @@ app.whenReady().then(() => {
 
   createWindow()
 
-  // 3. SHORTCUT & HANDLER
   globalShortcut.register('CommandOrControl+Shift+I', () => toggleOverlayMode())
   ipcMain.on('toggle-overlay', () => toggleOverlayMode())
 
