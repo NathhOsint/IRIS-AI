@@ -5,11 +5,12 @@ import path from 'path'
 export default function registerFileWrite(ipcMain: IpcMain) {
   ipcMain.handle('write-file', async (_event, { fileName, content }) => {
     try {
-      const targetPath = fileName.includes('/') || fileName.includes('\\') 
-        ? fileName 
-        : path.join(app.getPath('desktop'), fileName)
-        
-      console.log(`✍️ Writing: ${targetPath}`)
+      const isAbsolutePath = fileName.includes('/') || fileName.includes('\\')
+
+      const targetPath = isAbsolutePath ? fileName : path.join(app.getPath('desktop'), fileName)
+
+      console.log(`✍️ Writing to: ${targetPath}`)
+
       await fs.writeFile(targetPath, content, 'utf-8')
       return `Success. File saved to: ${targetPath}`
     } catch (err) {
