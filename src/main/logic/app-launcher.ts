@@ -1,42 +1,103 @@
 import { IpcMain } from 'electron'
 import { exec } from 'child_process'
-import os from 'os'
 
-const runCommand = (cmd: string): Promise<string> => {
-  return new Promise((resolve) => {
-    exec(cmd, (err, stdout) => {
-      resolve(err ? '' : stdout.trim())
+const APP_ALIASES: Record<string, string> = {
+  vscode: 'code',
+  code: 'code',
+  'visual studio code': 'code',
+  terminal: 'wt',
+  cmd: 'start cmd',
+  git: 'start git-bash',
+  mongo: 'mongodbcompass',
+  mongodb: 'mongodbcompass',
+  postman: 'postman',
+
+  chrome: 'start chrome',
+  'google chrome': 'start chrome',
+  edge: 'start msedge',
+  brave: 'start brave',
+  firefox: 'start firefox',
+
+  whatsapp: 'start whatsapp:',
+  discord: 'Update.exe --processStart Discord.exe',
+  spotify: 'start spotify:',
+  telegram: 'start telegram:',
+
+  tlauncher: 'TLauncher',
+  minecraft: 'MinecraftLauncher',
+  'cheat engine': 'Cheat Engine',
+  steam: 'start steam:',
+  'epic games': 'com.epicgames.launcher:',
+
+  'live wallpaper': 'livelywpf', // Try Lively Wallpaper default
+  lively: 'livelywpf',
+  notepad: 'notepad',
+  calculator: 'calc',
+  settings: 'start ms-settings:',
+  explorer: 'explorer',
+  files: 'explorer',
+  'task manager': 'taskmgr'
+}
+
+export default function registerAppLauncher(ipcMain: IpcMain) {
+  ipcMain.removeHandler('open-app')
+
+  ipcMain.handle('open-app', async (_event, appName: string) => {
+    return new Promise((resolve) => {
+      const lowerName = appName.toLowerCase().trim()
+
+      let command = APP_ALIASES[lowerName]
+
+      if (command) {
+        executeCommand(command, appName, resolve)
+      } else {
+        launchViaPowerShell(appName, resolve)
+      }
     })
   })
 }
 
-export default function registerAppScanner(ipcMain: IpcMain) {
-  console.log('🔵 [Main] Registering App Scanner...')
+// Helper to run the command
+function executeCommand(command: string, appName: string, resolve: any) {
+  console.log(`🚀 IRIS Launching Direct: ${command}`)
+  exec(command, (error) => {
+    if (error) {
+      console.warn(`Direct launch failed for ${appName}, trying fallback...`)
+      launchViaPowerShell(appName, resolve)
+    } else {
+      resolve({ success: true, message: `Opened ${appName}` })
+    }
+  })
+}
 
-  ipcMain.removeHandler('get-running-apps')
+function launchViaPowerShell(appName: string, resolve: any) {
+  console.log(`🔎 IRIS Deep Search for: ${appName}`)
 
-  ipcMain.handle('get-running-apps', async () => {
-    try {
-      if (os.platform() === 'win32') {
-        const cmd = `powershell "Get-Process | Where-Object {$_.MainWindowTitle -ne ''} | Select-Object -ExpandProperty ProcessName"`
-        const output = await runCommand(cmd)
-        const apps = output
-          .split(/\r?\n/)
-          .map((a) => a.trim())
-          .filter((a) => a)
-        return [...new Set(apps)]
-      }
+  const psCommand = `powershell -Command "Get-StartApps | Where-Object { $_.Name -like '*${appName}*' } | Select-Object -First 1 -ExpandProperty AppID"`
 
-      if (os.platform() === 'darwin') {
-        const cmd = `osascript -e 'tell application "System Events" to get name of (processes where background only is false)'`
-        const output = await runCommand(cmd)
-        return output.split(', ').map((s) => s.trim())
-      }
+  exec(psCommand, (err, stdout) => {
+    if (err) {
+      console.warn(`PowerShell search failed for ${appName}:`, err)
+    }
+    const appId = stdout.trim()
 
-      return [] 
-    } catch (e) {
-      console.error('App Scan Error:', e)
-      return []
+    if (appId) {
+      console.log(`🎯 Found AppID: ${appId}`)
+      const launchCmd = `start explorer "shell:AppsFolder\\${appId}"`
+
+      exec(launchCmd, (launchErr) => {
+        if (launchErr) {
+          resolve({ success: false, error: `Found app but could not launch: ${launchErr.message}` })
+        } else {
+          resolve({ success: true, message: `Opened ${appName} via System Search` })
+        }
+      })
+    } else {
+      console.error(`❌ Could not find app: ${appName}`)
+      resolve({
+        success: false,
+        error: `Could not find '${appName}' on this system. Try opening it manually once.`
+      })
     }
   })
 }
