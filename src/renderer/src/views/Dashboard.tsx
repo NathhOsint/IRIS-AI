@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useCallback, useRef } from 'react'
 import Sphere from '@renderer/components/Sphere'
 import {
   RiCpuLine,
@@ -49,7 +49,6 @@ const DashboardView = ({ props, stats, chatHistory, onVisionClick }: DashboardVi
     isMicMuted
   } = props
 
-  const [debugStatus, setDebugStatus] = useState<string>('Init')
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -58,17 +57,11 @@ const DashboardView = ({ props, stats, chatHistory, onVisionClick }: DashboardVi
 
   const setVideoRef = useCallback(
     (node: HTMLVideoElement | null) => {
-      if (node) {
-        if (activeStream && isVideoOn) {
-          setDebugStatus(`Attaching ${activeStream.id}`)
-          node.srcObject = activeStream
-          node.onloadedmetadata = () => {
-            setDebugStatus('Playing')
-            node.play().catch((e) => setDebugStatus(`Error: ${e.message}`))
-          }
-        } else {
-          setDebugStatus('No Stream Source')
-          node.srcObject = null
+      if (node && activeStream && isVideoOn) {
+        console.log(`🎥 Stream Attached: ${activeStream.id}`)
+        node.srcObject = activeStream
+        node.onloadedmetadata = () => {
+          node.play().catch((e) => console.warn('Auto-play prevented:', e))
         }
       }
     },
@@ -115,7 +108,7 @@ const DashboardView = ({ props, stats, chatHistory, onVisionClick }: DashboardVi
             <span
               className={`text-[9px] font-bold tracking-widest ${isVideoOn ? 'text-red-400/80' : 'text-zinc-600'}`}
             >
-              {isVideoOn ? (visionMode === 'screen' ? 'SCREEN FEED' : 'VISUAL INPUT') : 'OFFLINE'}
+              {isVideoOn ? (visionMode === 'screen' ? 'SCREEN' : 'CAMERA') : 'OFFLINE'}
             </span>
           </div>
 
@@ -123,7 +116,6 @@ const DashboardView = ({ props, stats, chatHistory, onVisionClick }: DashboardVi
             <button
               onClick={toggleSource}
               className="absolute top-2 right-2 z-30 p-1.5 rounded-md bg-black/50 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500 hover:text-black transition-all"
-              title="Switch Input"
             >
               <RiSwapBoxLine size={14} />
             </button>
@@ -133,20 +125,13 @@ const DashboardView = ({ props, stats, chatHistory, onVisionClick }: DashboardVi
             className={`w-full h-full rounded-xl overflow-hidden bg-black relative border border-white/5 transition-all ${isVideoOn ? 'opacity-100' : 'opacity-30'}`}
           >
             <video
-              key={visionMode} 
-              ref={setVideoRef} 
+              key={visionMode}
+              ref={setVideoRef}
               className={`w-full h-full object-cover ${visionMode === 'camera' ? '-scale-x-100' : ''}`}
               autoPlay
               playsInline
               muted
             />
-
-            {isVideoOn && (
-              <div className="absolute bottom-2 left-2 bg-black/50 text-[8px] text-emerald-500 font-mono px-1">
-                STATUS: {debugStatus}
-              </div>
-            )}
-
             {!isVideoOn && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 opacity-50">
                 <RiCameraLine size={24} />
@@ -161,7 +146,6 @@ const DashboardView = ({ props, stats, chatHistory, onVisionClick }: DashboardVi
             <span className="text-[10px] font-bold tracking-widest text-zinc-400">
               <RiLayoutGridLine className="inline mr-1" /> METRICS
             </span>
-            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_8px_#10b981]" />
           </div>
           <div className="grid grid-cols-2 gap-2 h-full">
             {systemMetrics.map((m, i) => (
@@ -182,12 +166,11 @@ const DashboardView = ({ props, stats, chatHistory, onVisionClick }: DashboardVi
 
       <div className="col-span-12 lg:col-span-6 relative flex flex-col items-center justify-center">
         <div
-          className={`lg:hidden absolute top-4 right-4 w-32 h-24 ${glassPanel} z-50 overflow-hidden transition-all ${isVideoOn ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+          className={`lg:hidden absolute top-4 right-4 w-32 h-24 ${glassPanel} z-50 overflow-hidden ${isVideoOn ? 'block' : 'hidden'}`}
         >
           <video
-            key={`mini-${visionMode}`}
             ref={setVideoRef}
-            className={`w-full h-full object-cover ${visionMode === 'camera' ? '-scale-x-100' : ''}`}
+            className="w-full h-full object-cover"
             autoPlay
             playsInline
             muted
@@ -210,7 +193,6 @@ const DashboardView = ({ props, stats, chatHistory, onVisionClick }: DashboardVi
             >
               {isVideoOn ? <RiSwapBoxLine size={20} /> : <RiCameraLine size={20} />}
             </button>
-
             <button onClick={toggleSystem} className="relative group mx-2">
               <div
                 className={`p-4 rounded-full border-2 transition-all duration-500 ${isSystemActive ? 'bg-emerald-500 border-emerald-400 text-black shadow-[0_0_20px_#10b981]' : 'bg-red-500/10 border-red-500/50 text-red-500'}`}
@@ -218,7 +200,6 @@ const DashboardView = ({ props, stats, chatHistory, onVisionClick }: DashboardVi
                 <RiPhoneFill size={24} className={isSystemActive ? 'animate-pulse' : ''} />
               </div>
             </button>
-
             <button
               onClick={toggleMic}
               className={`p-3 rounded-full transition-all ${isMicMuted ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/10 text-emerald-400'}`}
@@ -256,9 +237,6 @@ const DashboardView = ({ props, stats, chatHistory, onVisionClick }: DashboardVi
                   >
                     {msg.parts && msg.parts[0] ? msg.parts[0].text : msg.content}
                   </div>
-                  <span className="text-[8px] font-bold opacity-20 mt-1 uppercase tracking-wider">
-                    {msg.role === 'model' ? 'IRIS' : 'YOU'}
-                  </span>
                 </div>
               ))
             )}
