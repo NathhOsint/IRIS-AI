@@ -57,7 +57,7 @@ const IRIS = (props: IrisProps) => {
       if (Array.isArray(history)) setChatHistory(history.slice(-15))
     }
     fetchHistory()
-    const interval = setInterval(fetchHistory, 1200)
+    const interval = setInterval(fetchHistory, 500)
     return () => clearInterval(interval)
   }, [])
 

@@ -1,7 +1,7 @@
 import { floatTo16BitPCM, base64ToFloat32, downsampleTo16000 } from '../utils/audioUtils'
 import { getRunningApps } from './get-apps'
 import { getHistory, saveMessage } from './iris-ai-brain'
-import { getSystemStatus } from './system-info'
+import { getAllApps, getSystemStatus } from './system-info'
 
 const searchFiles = async (fileName: string, searchPath?: string) => {
   try {
@@ -53,6 +53,16 @@ const readDirectory = async (dirPath: string) => {
   try {
     const result = await window.electron.ipcRenderer.invoke('read-directory', dirPath)
     return result
+  } catch (err) {
+    return `System Error: ${err}`
+  }
+}
+
+const openApp = async (appName: string) => {
+  try {
+    const result: any = await window.electron.ipcRenderer.invoke('open-app', appName)
+    if (result.success) return `Success: ${appName} is opening.`
+    return `Error: ${result.error}`
   } catch (err) {
     return `System Error: ${err}`
   }
@@ -168,6 +178,7 @@ export class GeminiLiveService {
 
     const history = await getHistory()
     const sysStats = await getSystemStatus()
+    const allapps = await getAllApps()
     this.lastAppList = await getRunningApps()
 
     const contextPrompt = `
@@ -179,6 +190,7 @@ export class GeminiLiveService {
     - **Uptime:** ${sysStats?.os.uptime || 'Unknown'}
     - **Temperature:** ${sysStats?.temperature || 'Unknown'}°C
     - **Open Apps:** ${this.lastAppList.join(', ')}
+    - **Installed Apps:** ${allapps.slice(0, 10).join(', ')}${allapps.length > 300 ? ', ...' : ''}
     - **Current Time:** ${new Date().toLocaleString()}
 
     ---
@@ -314,6 +326,22 @@ export class GeminiLiveService {
                     },
                     required: ['directory_path']
                   }
+                },
+                {
+                  name: 'open_app',
+                  description:
+                    'Launch a system application or software installed on the computer (e.g., VS Code, Chrome, WhatsApp, Calculator, Settings).',
+                  parameters: {
+                    type: 'OBJECT',
+                    properties: {
+                      app_name: {
+                        type: 'STRING',
+                        description:
+                          'The name of the application (e.g., "vscode", "whatsapp", "browser").'
+                      }
+                    },
+                    required: ['app_name']
+                  }
                 }
               ]
             }
@@ -353,6 +381,8 @@ export class GeminiLiveService {
               result = await readFile(call.args.file_path)
             } else if (call.name === 'write_file') {
               result = await writeFile(call.args.file_name, call.args.content)
+            } else if (call.name === 'open_app') {
+              result = await openApp(call.args.app_name)
             } else if (call.name === 'manage_file') {
               result = await manageFile(
                 call.args.operation,

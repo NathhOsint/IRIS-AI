@@ -12,13 +12,14 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import registerIpcHandlers from './logic/iris-memory-save'
 import registerSystemHandlers from './logic/get-system-info'
-import registerAppLauncher from './logic/app-launcher'
 import registerFileSearch from './logic/file-search'
 import registerFileOps from './logic/file-ops'
 import registerFileWrite from './logic/file-write'
 import registerFileRead from './logic/file-read'
 import registerFileOpen from './logic/file-open'
 import registerDirLoader from './logic/dir-load'
+import registerFileScanner from './logic/file-launcher'
+import registerAppLauncher from './logic/app-launcher'
 
 let mainWindow: BrowserWindow | null = null
 let isOverlayMode = false
@@ -97,13 +98,14 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
+  registerAppLauncher(ipcMain)
   registerDirLoader(ipcMain)
   registerFileOpen(ipcMain)
   registerFileSearch(ipcMain)
   registerFileRead(ipcMain)
   registerFileWrite(ipcMain)
   registerFileOps(ipcMain)
-  registerAppLauncher(ipcMain)
+  registerFileScanner(ipcMain)
   registerSystemHandlers(ipcMain)
   registerIpcHandlers({ ipcMain, app })
 
